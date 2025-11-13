@@ -1,18 +1,20 @@
 # Sudoku 6x6
 
-A minimalist, logic-based Sudoku game built with **Next.js**, **Tailwind CSS**, and **Radix UI**.  
-This project focuses on clean UI design, fluid interactivity, and a lightweight 6x6 puzzle system as a demonstration of problem-solving and frontend architecture.
+A minimalist Sudoku game built with **Next.js**, **Tailwind CSS**, and **Radix UI**.  
+Small project focusing on practicing front-end skills and programming logic (logic behind Sudoku).
+
+Game can be played online:
+**https://sudoku.andrejkesten.dev**
 
 ---
 
 ## Features
 
-- Classic 6x6 Sudoku grid  
+- Mini 6x6 Sudoku grid  
 - Real-time input validation  
 - Sudoku board generator and solver  
 - Local storage for saving progress  
 - Responsive and accessible design  
-- UI built with Radix primitives and Tailwind components  
 
 ---
 
