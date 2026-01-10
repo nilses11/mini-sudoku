@@ -45,50 +45,76 @@ export default function Page() {
     startNewGame('easy');
   }, [startNewGame]);
 
-  const handleDrop = useCallback((row: number, col: number, num: number) => {
+  const handleDrop = useCallback((row: number, col: number, num: number, source: 'pool' | 'board', fromRow?: number, fromCol?: number) => {
     if (board[row][col].isFixed) return;
 
-    const oldValue = board[row][col].value;
-    const isValid = validateMove(board, solution, row, col, num);
-    
-    let newValue: number;
-    let countChanges: Record<number, number> = {};
-    
-    if (oldValue === num) {
-      // Remove the number
-      newValue = 0;
-      countChanges[num] = 1; // increment
-    } else {
-      // Place the number
-      newValue = num;
-      if (oldValue !== 0) {
-        countChanges[oldValue] = 1; // restore old
-      }
-      countChanges[num] = -1; // consume new
-    }
-    
-    const newBoard = board.map((r, i) =>
-      r.map((cell, j) => {
-        if (i === row && j === col) {
-          return { ...cell, value: newValue };
+    if (source === 'pool') {
+      // From pool to board
+      const oldValue = board[row][col].value;
+      const isValid = validateMove(board, solution, row, col, num);
+      
+      let newValue: number;
+      let countChanges: Record<number, number> = {};
+      
+      if (oldValue === num) {
+        // Remove the number
+        newValue = 0;
+        countChanges[num] = 1; // increment
+      } else {
+        // Place the number
+        newValue = num;
+        if (oldValue !== 0) {
+          countChanges[oldValue] = 1; // restore old
         }
-        return cell;
-      })
-    );
-
-    setBoard(newBoard);
-
-    setAvailableCounts(prev => {
-      const updated = { ...prev };
-      for (const [n, change] of Object.entries(countChanges)) {
-        const numKey = parseInt(n);
-        updated[numKey] = (updated[numKey] || 0) + change;
+        countChanges[num] = -1; // consume new
       }
-      return updated;
-    });
+      
+      const newBoard = board.map((r, i) =>
+        r.map((cell, j) => {
+          if (i === row && j === col) {
+            return { ...cell, value: newValue };
+          }
+          return cell;
+        })
+      );
 
-    if (isValid && isBoardComplete(newBoard) && isAllCorrect(newBoard, solution)) {
-      setShowSuccess(true);
+      setBoard(newBoard);
+
+      setAvailableCounts(prev => {
+        const updated = { ...prev };
+        for (const [n, change] of Object.entries(countChanges)) {
+          const numKey = parseInt(n);
+          updated[numKey] = (updated[numKey] || 0) + change;
+        }
+        return updated;
+      });
+
+      if (isValid && isBoardComplete(newBoard) && isAllCorrect(newBoard, solution)) {
+        setShowSuccess(true);
+      }
+    } else if (source === 'board') {
+      // Move from board to board
+      if (fromRow === undefined || fromCol === undefined) return;
+      if (fromRow === row && fromCol === col) return; // same cell
+
+      const newBoard = board.map((r, i) =>
+        r.map((cell, j) => {
+          if (i === row && j === col) {
+            return { ...cell, value: num };
+          } else if (i === fromRow && j === fromCol) {
+            return { ...cell, value: 0 };
+          }
+          return cell;
+        })
+      );
+
+      setBoard(newBoard);
+
+      // No count changes since it's the same number moving
+      const isValid = validateMove(newBoard, solution, row, col, num);
+      if (isValid && isBoardComplete(newBoard) && isAllCorrect(newBoard, solution)) {
+        setShowSuccess(true);
+      }
     }
   }, [board, solution]);
 

@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 
 interface GameBoardProps {
   board: Board;
-  onDrop?: (row: number, col: number, num: number) => void;
+  onDrop?: (row: number, col: number, num: number, source: 'pool' | 'board', fromRow?: number, fromCol?: number) => void;
 }
 
 export default function GameBoard({ board, onDrop }: GameBoardProps) {
@@ -26,8 +26,19 @@ export default function GameBoard({ board, onDrop }: GameBoardProps) {
 
   const handleDrop = (e: React.DragEvent, row: number, col: number) => {
     e.preventDefault();
-    const num = parseInt(e.dataTransfer.getData('number'));
-    if (onDrop) onDrop(row, col, num);
+    if (board[row][col].isFixed) return;
+
+    const numberData = e.dataTransfer.getData('number');
+    const removeData = e.dataTransfer.getData('remove');
+
+    if (numberData) {
+      const num = parseInt(numberData);
+      if (onDrop) onDrop(row, col, num, 'pool');
+    } else if (removeData) {
+      const num = parseInt(removeData);
+      const [fromRow, fromCol] = e.dataTransfer.getData('from').split(',').map(Number);
+      if (onDrop) onDrop(row, col, num, 'board', fromRow, fromCol);
+    }
   };
 
   return (
