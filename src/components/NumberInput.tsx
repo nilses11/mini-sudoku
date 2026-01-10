@@ -3,13 +3,11 @@
 import { Button } from '@/components/ui/button';
 
 interface NumberInputProps {
-  onNumberClick: (num: number) => void;
-  disabled: boolean;
   availableCounts: Record<number, number>;
   onDrop?: (num: number, fromRow: number, fromCol: number) => void;
 }
 
-export default function NumberInput({ onNumberClick, disabled, availableCounts, onDrop }: NumberInputProps) {
+export default function NumberInput({ availableCounts, onDrop }: NumberInputProps) {
   const handleDragStart = (e: React.DragEvent, num: number) => {
     e.dataTransfer.setData('number', num.toString());
   };
@@ -31,8 +29,6 @@ export default function NumberInput({ onNumberClick, disabled, availableCounts, 
         availableCounts[num] > 0 && (
           <Button
             key={num}
-            onClick={() => onNumberClick(num)}
-            disabled={disabled}
             size="lg"
             draggable
             onDragStart={(e) => handleDragStart(e, num)}

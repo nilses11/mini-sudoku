@@ -26,7 +26,6 @@ import { Trophy, RotateCcw } from 'lucide-react';
 export default function Page() {
   const [board, setBoard] = useState<Board>([]);
   const [solution, setSolution] = useState<number[][]>([]);
-  const [selectedCell, setSelectedCell] = useState<[number, number] | null>(null);
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
   const [showSuccess, setShowSuccess] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
@@ -36,7 +35,6 @@ export default function Page() {
     const { puzzle, solution: sol } = generatePuzzle(diff);
     setBoard(puzzle);
     setSolution(sol);
-    setSelectedCell(null);
     setDifficulty(diff);
     setShowSuccess(false);
     setGameStarted(true);
@@ -46,12 +44,6 @@ export default function Page() {
   useEffect(() => {
     startNewGame('easy');
   }, [startNewGame]);
-
-  const handleCellClick = (row: number, col: number) => {
-    if (!board[row][col].isFixed) {
-      setSelectedCell([row, col]);
-    }
-  };
 
   const handleDrop = useCallback((row: number, col: number, num: number) => {
     if (board[row][col].isFixed) return;
@@ -114,68 +106,6 @@ export default function Page() {
     setAvailableCounts(prev => ({ ...prev, [num]: (prev[num] || 0) + 1 }));
   }, [board]);
 
-  const handleNumberInput = useCallback((num: number) => {
-    if (!selectedCell) return;
-
-    const [row, col] = selectedCell;
-    if (board[row][col].isFixed) return;
-
-    const oldValue = board[row][col].value;
-    const isValid = validateMove(board, solution, row, col, num);
-    
-    let newValue: number;
-    let countChanges: Record<number, number> = {};
-    
-    if (oldValue === num) {
-      // Remove the number
-      newValue = 0;
-      countChanges[num] = 1; // increment
-    } else {
-      // Place the number
-      newValue = num;
-      if (oldValue !== 0) {
-        countChanges[oldValue] = 1; // restore old
-      }
-      countChanges[num] = -1; // consume new
-    }
-    
-    const newBoard = board.map((r, i) =>
-      r.map((cell, j) => {
-        if (i === row && j === col) {
-          return { ...cell, value: newValue };
-        }
-        return cell;
-      })
-    );
-
-    setBoard(newBoard);
-
-    setAvailableCounts(prev => {
-      const updated = { ...prev };
-      for (const [n, change] of Object.entries(countChanges)) {
-        const numKey = parseInt(n);
-        updated[numKey] = (updated[numKey] || 0) + change;
-      }
-      return updated;
-    });
-
-    if (isValid && isBoardComplete(newBoard) && isAllCorrect(newBoard, solution)) {
-      setShowSuccess(true);
-    }
-  }, [selectedCell, board, solution]);
-
-  useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      const num = parseInt(e.key);
-      if (num >= 1 && num <= 6 && selectedCell) {
-        handleNumberInput(num);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [selectedCell, handleNumberInput]);
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
       <Card className="w-full max-w-2xl shadow-2xl">
@@ -222,8 +152,6 @@ export default function Page() {
             {gameStarted && (
               <GameBoard
                 board={board}
-                selectedCell={selectedCell}
-                onCellClick={handleCellClick}
                 onDrop={handleDrop}
               />
             )}
@@ -231,11 +159,9 @@ export default function Page() {
 
           <div className="space-y-2">
             <p className="text-center text-sm text-muted-foreground">
-              Drag numbers to cells or select a cell and choose a number to place or remove
+              Drag numbers to cells to place them, or drag numbers from cells back to remove them
             </p>
             <NumberInput
-              onNumberClick={handleNumberInput}
-              disabled={!selectedCell}
               availableCounts={availableCounts}
               onDrop={handleRemoveDrop}
             />

@@ -5,12 +5,10 @@ import { cn } from '@/lib/utils';
 
 interface GameBoardProps {
   board: Board;
-  selectedCell: [number, number] | null;
-  onCellClick: (row: number, col: number) => void;
   onDrop?: (row: number, col: number, num: number) => void;
 }
 
-export default function GameBoard({ board, selectedCell, onCellClick, onDrop }: GameBoardProps) {
+export default function GameBoard({ board, onDrop }: GameBoardProps) {
   const getBoxClass = (row: number, col: number) => {
     const boxRow = Math.floor(row / 2);
     const boxCol = Math.floor(col / 3);
@@ -37,14 +35,12 @@ export default function GameBoard({ board, selectedCell, onCellClick, onDrop }: 
       <div className="grid grid-cols-6 gap-0">
         {board.map((row, rowIndex) =>
           row.map((cell, colIndex) => {
-            const isSelected = selectedCell?.[0] === rowIndex && selectedCell?.[1] === colIndex;
             const isRightBorder = (colIndex + 1) % 3 === 0 && colIndex !== 5;
             const isBottomBorder = (rowIndex + 1) % 2 === 0 && rowIndex !== 5;
             
             return (
               <button
                 key={`${rowIndex}-${colIndex}`}
-                onClick={() => onCellClick(rowIndex, colIndex)}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => handleDrop(e, rowIndex, colIndex)}
                 draggable={cell.value !== 0 && !cell.isFixed}
@@ -59,7 +55,6 @@ export default function GameBoard({ board, selectedCell, onCellClick, onDrop }: 
                   cell.isFixed 
                     ? 'text-gray-900 dark:text-gray-100 cursor-default font-bold' 
                     : 'text-blue-600 dark:text-blue-400 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/40',
-                  isSelected && !cell.isFixed && 'ring-4 ring-blue-500 ring-inset z-10',
                   isRightBorder && 'border-r-4 border-gray-800 dark:border-gray-200',
                   isBottomBorder && 'border-b-4 border-gray-800 dark:border-gray-200',
                   'border border-gray-300 dark:border-gray-700'
