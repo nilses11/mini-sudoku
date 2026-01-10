@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
@@ -18,6 +17,7 @@ import {
   validateMove,
   isBoardComplete,
   isAllCorrect,
+  getHiddenCounts,
   Board,
   Difficulty,
 } from '@/lib/sudoku';
@@ -27,20 +27,20 @@ export default function Page() {
   const [board, setBoard] = useState<Board>([]);
   const [solution, setSolution] = useState<number[][]>([]);
   const [selectedCell, setSelectedCell] = useState<[number, number] | null>(null);
-  const [mistakes, setMistakes] = useState(0);
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
   const [showSuccess, setShowSuccess] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
+  const [availableCounts, setAvailableCounts] = useState<Record<number, number>>({});
 
   const startNewGame = useCallback((diff: Difficulty) => {
     const { puzzle, solution: sol } = generatePuzzle(diff);
     setBoard(puzzle);
     setSolution(sol);
     setSelectedCell(null);
-    setMistakes(0);
     setDifficulty(diff);
     setShowSuccess(false);
     setGameStarted(true);
+    setAvailableCounts(getHiddenCounts(puzzle, sol));
   }, []);
 
   useEffect(() => {
@@ -53,38 +53,114 @@ export default function Page() {
     }
   };
 
+  const handleDrop = useCallback((row: number, col: number, num: number) => {
+    if (board[row][col].isFixed) return;
+
+    const oldValue = board[row][col].value;
+    const isValid = validateMove(board, solution, row, col, num);
+    
+    let newValue: number;
+    let countChanges: Record<number, number> = {};
+    
+    if (oldValue === num) {
+      // Remove the number
+      newValue = 0;
+      countChanges[num] = 1; // increment
+    } else {
+      // Place the number
+      newValue = num;
+      if (oldValue !== 0) {
+        countChanges[oldValue] = 1; // restore old
+      }
+      countChanges[num] = -1; // consume new
+    }
+    
+    const newBoard = board.map((r, i) =>
+      r.map((cell, j) => {
+        if (i === row && j === col) {
+          return { ...cell, value: newValue };
+        }
+        return cell;
+      })
+    );
+
+    setBoard(newBoard);
+
+    setAvailableCounts(prev => {
+      const updated = { ...prev };
+      for (const [n, change] of Object.entries(countChanges)) {
+        const numKey = parseInt(n);
+        updated[numKey] = (updated[numKey] || 0) + change;
+      }
+      return updated;
+    });
+
+    if (isValid && isBoardComplete(newBoard) && isAllCorrect(newBoard, solution)) {
+      setShowSuccess(true);
+    }
+  }, [board, solution]);
+
+  const handleRemoveDrop = useCallback((num: number, fromRow: number, fromCol: number) => {
+    const newBoard = board.map((r, i) =>
+      r.map((cell, j) => {
+        if (i === fromRow && j === fromCol) {
+          return { ...cell, value: 0 };
+        }
+        return cell;
+      })
+    );
+
+    setBoard(newBoard);
+    setAvailableCounts(prev => ({ ...prev, [num]: (prev[num] || 0) + 1 }));
+  }, [board]);
+
   const handleNumberInput = useCallback((num: number) => {
     if (!selectedCell) return;
 
     const [row, col] = selectedCell;
     if (board[row][col].isFixed) return;
 
+    const oldValue = board[row][col].value;
     const isValid = validateMove(board, solution, row, col, num);
+    
+    let newValue: number;
+    let countChanges: Record<number, number> = {};
+    
+    if (oldValue === num) {
+      // Remove the number
+      newValue = 0;
+      countChanges[num] = 1; // increment
+    } else {
+      // Place the number
+      newValue = num;
+      if (oldValue !== 0) {
+        countChanges[oldValue] = 1; // restore old
+      }
+      countChanges[num] = -1; // consume new
+    }
     
     const newBoard = board.map((r, i) =>
       r.map((cell, j) => {
         if (i === row && j === col) {
-          return { ...cell, value: num, isError: !isValid };
+          return { ...cell, value: newValue };
         }
-        return { ...cell, isError: false };
+        return cell;
       })
     );
 
     setBoard(newBoard);
 
-    if (!isValid) {
-      setMistakes(prev => prev + 1);
-      setTimeout(() => {
-        setBoard(prevBoard =>
-          prevBoard.map((r, i) =>
-            r.map((cell, j) => ({ ...cell, isError: false }))
-          )
-        );
-      }, 500);
-    } else {
-      if (isBoardComplete(newBoard) && isAllCorrect(newBoard, solution)) {
-        setShowSuccess(true);
+    setAvailableCounts(prev => {
+      const updated = { ...prev };
+      for (const [n, change] of Object.entries(countChanges)) {
+        const numKey = parseInt(n);
+        updated[numKey] = (updated[numKey] || 0) + change;
       }
+      return updated;
+    });
+
+    if (isValid && isBoardComplete(newBoard) && isAllCorrect(newBoard, solution)) {
+      setShowSuccess(true);
     }
   }, [selectedCell, board, solution]);
 
@@ -139,12 +215,6 @@ export default function Page() {
               <RotateCcw className="h-4 w-4" />
             </Button>
           </div>
-
-          <div className="flex justify-center">
-            <Badge variant="destructive" className="text-lg px-4 py-2">
-              Mistakes: {mistakes}
-            </Badge>
-          </div>
         </CardHeader>
 
         <CardContent className="space-y-6">
@@ -154,17 +224,20 @@ export default function Page() {
                 board={board}
                 selectedCell={selectedCell}
                 onCellClick={handleCellClick}
+                onDrop={handleDrop}
               />
             )}
           </div>
 
           <div className="space-y-2">
             <p className="text-center text-sm text-muted-foreground">
-              Select a cell and choose a number
+              Drag numbers to cells or select a cell and choose a number to place or remove
             </p>
             <NumberInput
               onNumberClick={handleNumberInput}
               disabled={!selectedCell}
+              availableCounts={availableCounts}
+              onDrop={handleRemoveDrop}
             />
           </div>
         </CardContent>
@@ -181,9 +254,6 @@ export default function Page() {
             </DialogTitle>
             <DialogDescription className="text-center space-y-2">
               <p className="text-lg">You completed the puzzle!</p>
-              <p className="text-xl font-semibold">
-                Mistakes: {mistakes}
-              </p>
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2 justify-center mt-4">

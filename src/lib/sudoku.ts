@@ -3,7 +3,6 @@
 export type Cell = {
   value: number;
   isFixed: boolean;
-  isError: boolean;
 };
 
 export type Board = Cell[][];
@@ -63,7 +62,7 @@ function generateSolution(): number[][] {
 // remove cells based on difficulty
 function removeNumbers(solution: number[][], difficulty: Difficulty): Board {
   const board: Board = solution.map(row => 
-    row.map(value => ({ value, isFixed: true, isError: false }))
+    row.map(value => ({ value, isFixed: true }))
   );
   
   const cellsToRemove = {
@@ -84,7 +83,7 @@ function removeNumbers(solution: number[][], difficulty: Difficulty): Board {
   
   for (let i = 0; i < cellsToRemove; i++) {
     const [row, col] = positions[i];
-    board[row][col] = { value: 0, isFixed: false, isError: false };
+    board[row][col] = { value: 0, isFixed: false };
   }
   
   return board;
@@ -122,4 +121,17 @@ export function isAllCorrect(board: Board, solution: number[][]): boolean {
     }
   }
   return true;
+}
+
+export function getHiddenCounts(puzzle: Board, solution: number[][]): Record<number, number> {
+  const counts: Record<number, number> = {};
+  for (let i = 0; i < 6; i++) {
+    for (let j = 0; j < 6; j++) {
+      if (!puzzle[i][j].isFixed) {
+        const val = solution[i][j];
+        counts[val] = (counts[val] || 0) + 1;
+      }
+    }
+  }
+  return counts;
 }
